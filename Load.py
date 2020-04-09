@@ -1,7 +1,13 @@
 from skyfield.api import Topos, load
 import math
+import numpy as np
+import pyproj
+import math
+import sympy as sym
 from obspy.geodetics import degrees2kilometers
-from pygeodesy import compassAngle
+#from pygeodesy import compassAngle
+import pygeodesy as p
+from collections import deque, namedtuple
 
 
 stations_url = 'http://celestrak.com/NORAD/elements/iridium.txt'
@@ -59,6 +65,7 @@ ir96pos = ir96.at(t)
 print()
 print('Posizioni satelliti considerati')
 print(ir96pos.position.km)
+print(ir96pos.position)
 
 print('/')
 
@@ -66,7 +73,7 @@ print('/')
 sub96i = ir96pos.subpoint()
 print('latitudine ', sub96i.latitude)
 print('longitudine ', sub96i.longitude)
-print('altitudine ', sub96i.elevation.km)
+print('altitudine ', sub96i.elevation.km)#risp alla crosta - se ci sommo raggio terrestre ho la distanza dal centro della terra
 
 x = str(sub96i.latitude).split(' ')
 print(x)
@@ -82,75 +89,17 @@ tmp1 = str(x[2]).split('"')
 sec = tmp1[0]
 print("sec", sec)
 
-print("")
-print("")
-print("Array")
-print("")
 
-iridPos = []
-irSubP = []
+########################################################################################################################
+######################################################################################################################## FUNCTIONS
+def gps_to_ecef_pyproj(lat, lon, alt):
+    ecef = pyproj.Proj(proj='geocent', ellps='WGS84', datum='WGS84')
+    lla = pyproj.Proj(proj='latlong', ellps='WGS84', datum='WGS84')
+    x, y, z = pyproj.transform(lla, ecef, lon, lat, alt, radians=False)
+    return x,y,z
 
-irLat = []
-irLon = []
-irAlt = []
-
-for i in range(0,32):
-    iridPos.append(iridium[i].at(t))
-
-for i in range(0,32):
-    print("Iridium", iridium[i], iridPos[i].position.km)
-
-
-print("")
-print("")
-
-for i in range(0,32):
-    irSubP.append(iridPos[i].subpoint())
-
-for i in range(0,32):                           #splitto latitudine
-    tpLt = str(irSubP[i].latitude).split(' ')
-    tpLg = str(irSubP[i].longitude).split(' ')
-    tpAl = str(irSubP[i].elevation).split(' ')
-
-                                                #estrapolo latitudine in gradi primi e secondi
-    deLat = str(tpLt[0]).split('d')
-    prLat = str(tpLt[1])[:2]
-    seLat = str(tpLt[2]).split('"')
-
-    # sommo gradi con primi e secondi opportunamente trasformati e aggiungo il dato sull'array irLat
-
-    irLat.append(float(deLat[0]) + ((float(prLat))/60) + ((float(seLat[0]))/3600))
-
-                                                # estrapolo longitudine in gradi primi e secondi
-    deLon = str(tpLg[0]).split('d')
-    prLon = str(tpLg[1])[:2]
-    seLon = str(tpLg[2]).split('"')
-
-    irLon.append(float(deLon[0]) + ((float(prLon))/60) + ((float(seLon[0]))/3600))
-
-                                                # estrapolo altitudine
-
-
-    #irLon.append(float(deLon[0]) + ((float(prLon))/60) + ((float(seLon[0]))/3600))
-
-
-
-for i in range(0,32):
-    print(irLat[i])
-
-print("")          #funge
-print(degrees2kilometers(1))
-
-
-kk = compassAngle(irLat[0],irLon[0],irLat[1],irLon[1])
-print("Lat1 ",irLat[0], "Lon1 ", irLon[0], "Lat2 ", irLat[1], "Lon2 ",irLon[1], "Angolo ",kk)
-
-
-
-
-# Distance 3d
 def distance(x1, y1, z1, x2, y2, z2):
-    d = math.sqrt(math.pow(x2 - x1, 2) + math.pow(y2 - y1, 2) + math.pow(z2 - z1, 2) * 1.0)
+    return math.sqrt(math.pow(x2 - x1, 2) + math.pow(y2 - y1, 2) + math.pow(z2 - z1, 2) * 1.0)
 
 
 # Add a vertex to the set of vertices and the graph
@@ -200,38 +149,156 @@ def print_graph():
         print(vertices[i], " -> ", vertices[j], " edge weight: ", graph[i][j])
 
 
-vertices = []
-vertices_no= 0
-graph = []
+def vectp(x1,y1,z1,x2,y2,z2):
+    vect = []
+    l = x2-x1
+    m = y2-y1
+    n = z2-z1
+    vect.append(l)
+    vect.append(m)
+    vect.append(n)
+    return vect
+
+print("")
+def rectEq(x1,y1,z1,x2,y2,z2,r):    #1 = p ; 2 = q                      l = vect[0] ; m = vect[1] ; n = vect[2]
+    sym.init_printing()
+    x,y,z = sym.symbols('x,y,z')
+    vect = vectp(x1, y1, z1, x2, y2, z2)
+    if vect[0] !=0 and vect[1] !=0 and vect[2] !=0:#tutti diversi da 0
+        a = sym.Eq((x-x1)/vect[0],(y-y1)/vect[1])
+        b = sym.Eq((y-y1)/vect[1],(z-z1)/vect[2])
+        tmp = sym.solve([a, b], (x, y, z))
+        d,e,f = 0,0,0
+        if tmp.get(x) is not None:
+            d = sym.Eq(x,tmp.get(x))
+        if tmp.get(y) is not None:
+            e = sym.Eq(y, tmp.get(y))
+        if tmp.get(z) is not None:
+            f = sym.Eq(z, tmp.get(z))
+        c = sym.Eq(x**2+y**2+z**2,r**2)
+        result = sym.solve([d,e,f,c],(x,y,z))
+        return result
+
+
+def isVisible(x1,y1,z1,x2,y2,z2,r):
+    tmp = rectEq(x1,y1,z1,x2,y2,z2,r)
+    if sym.im(tmp[0][0])!=0 or sym.im(tmp[0][1])!=0 or sym.im(tmp[0][2])!=0 or sym.im(tmp[1][0])!=0 or sym.im(tmp[1][1])!=0 or sym.im(tmp[1][2])!=0:
+        return False
+    else:
+        return True
+
+######################################################################################################################## FUNCTIONS
+########################################################################################################################
+
+print("")
+print("")
+print("Array")
+print("")
+
+iridPos = []
+irSubP = []
+
+irLat = []
+irLon = []
+irAlt = []
+
+for i in range(0,32):
+    iridPos.append(iridium[i].at(t))
+
+#for i in range(0,32):
+  #  print("Iridium", iridium[i], iridPos[i].subpoint().latitude)
+   # print("Iridium", iridium[i], iridPos[i].subpoint().longitude)
+  #  print("Iridium", iridium[i], iridPos[i].subpoint().elevation.km)
+
+print("")
+print("")
+
+for i in range(0,32):
+    irSubP.append(iridPos[i].subpoint())
+
+for i in range(0,32):                           #splitto latitudine
+    tpLt = str(irSubP[i].latitude).split(' ')
+    tpLg = str(irSubP[i].longitude).split(' ')
+
+                                                #estrapolo latitudine in gradi primi e secondi
+    deLat = str(tpLt[0]).split('d')
+    prLat = str(tpLt[1])[:2]
+    seLat = str(tpLt[2]).split('"')
+
+    # sommo gradi con primi e secondi opportunamente trasformati e aggiungo il dato sull'array irLat
+
+    irLat.append(float(deLat[0]) + ((float(prLat))/60) + ((float(seLat[0]))/3600))
+
+                                                # estrapolo longitudine in gradi primi e secondi
+    deLon = str(tpLg[0]).split('d')
+    prLon = str(tpLg[1])[:2]
+    seLon = str(tpLg[2]).split('"')
+
+    irLon.append(float(deLon[0]) + ((float(prLon))/60) + ((float(seLon[0]))/3600))
+
+                                                # estrapolo altitudine
+
+    irAlt.append(irSubP[i].elevation.m)
+
+#for i in range(0,32):
+ #   print("latitudine di ", iridium[i], " -> ", irLat[i])
+  #  print("longitudine di ", iridium[i], " -> ", irLon[i])
+   # print("elevazione di ", iridium[i], " -> ", irAlt[i])
+
+#latitude = (lat * math.pi) / 180
+
+tmpTr = []
+
+xx = []
+yy = []
+zz = []
+
+print("")
+
+for i in range(0,32):
+    tmpTr.append(gps_to_ecef_pyproj(irLat[i],irLon[i],irAlt[i]))
+    print("Altitudine ",irAlt[i])
+
+print("")
+
+for i in range(0,32):
+    xx.append(tmpTr[i][0])
+    yy.append(tmpTr[i][1])
+    zz.append(tmpTr[i][2])
+
+print("")
+#print("Lat ", irLat[0], "Lon ", irLon[0], "Alt ", irAlt[0], "Conversione in xyz -> ", "x: ", xx[0],"y: ", yy[0],"z: ", zz[0] )
+
+#CONVERTITE POSIZIONI IN XYZ IN XX YY ZZ
+
+vertices = [] #riempio con add_vertex
+vertices_no = 0 #aumento con add_vertex
+graph = [] #riempio con add_vertex
 cost = 0
 
 for i in range(0,32):
     add_vertex(iridium[i])
 
-
-#for i in range(0,32):
-    #print(vertices[i])
+for i in range(0,32):
+    print(vertices[i])
 
 for i in range(0,32):
     for j in range(0,32):
-        add_edge(vertices[i], vertices[j], j)
+        if i!=j:
+            if not isVisible(xx[i],yy[i],zz[i],xx[j],yy[j],zz[j],6378137):
+                add_edge(vertices[i], vertices[j],math.inf)
+            else:
+                add_edge(vertices[i], vertices[j], distance(xx[i], yy[i], zz[i], xx[j], yy[j], zz[j]))
+        else:
+            add_edge(vertices[i], vertices[j],0)
 
-#print_graph()
-#print("Internal representation: ", graph)
+print("")
+print("")
 
-
-
-#sub2i = ir2pos.subpoint()
-#print('Distanza satelliti considerati')
-#distance(tasub.latitude.km, tbsub.latitude.km, tasub.longitude.km, tbsub.longitude.km, tasub.elevation.km, tbsub.elevation.km)
-
-#days = t - ir96.epoch
-#print('{:.3f} days away from epoch'.format(days))
-
-#print(satellite.epoch.utc_jpl())
-
-#ts = load.timescale()
+print_graph()
+print("Internal representation: ", graph)
 
 
 
-#geodesy ritorna angolo tra due punti dal centro della terra
+
+
