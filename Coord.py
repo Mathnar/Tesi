@@ -1,3 +1,4 @@
+
 from skyfield.api import Topos, load
 import math
 import numpy as np
@@ -11,7 +12,7 @@ from collections import deque, namedtuple
 
 
 stations_url = 'http://celestrak.com/NORAD/elements/iridium.txt'
-satellites = load.tle(stations_url, reload=True)
+satellites = load.tle(stations_url)
 ir7 = satellites['IRIDIUM 7 [-]']
 ir5 = satellites['IRIDIUM 5 [-]']
 ir4 = satellites['IRIDIUM 4 [-]']
@@ -185,9 +186,9 @@ def isVisible(x1,y1,z1,x2,y2,z2,r):    #1 = p ; 2 = q                      l = v
         tmp = sym.solve([d,e,f,c],(x,y,z))
         if sym.im(tmp[0][0]) != 0 or sym.im(tmp[0][1]) != 0 or sym.im(tmp[0][2]) != 0 or sym.im(
                 tmp[1][0]) != 0 or sym.im(tmp[1][1]) != 0 or sym.im(tmp[1][2]) != 0:
-            return True
-        else:
             return False
+        else:
+            return True
 
 
 #def isVisible(x1,y1,z1,x2,y2,z2,r):
@@ -267,7 +268,7 @@ print("")
 
 for i in range(0,32):
     tmpTr.append(gps_to_ecef_pyproj(irLat[i],irLon[i],irAlt[i]))
-    print("Altitudine di ",i," ",irAlt[i])
+    print("Altitudine ",irAlt[i])
 
 print("")
 
@@ -292,23 +293,60 @@ for i in range(0,32):
 for i in range(0,32):
     print(vertices[i])
 
-for i in range(0,1):
-    for j in range(0,32):
-        if i!=j:
-            if not isVisible(xx[i],yy[i],zz[i],xx[j],yy[j],zz[j],6378137):
-                add_edge(vertices[i], vertices[j],math.inf)
-            else:
-                add_edge(vertices[i], vertices[j], distance(xx[i], yy[i], zz[i], xx[j], yy[j], zz[j]))
-        else:
-            add_edge(vertices[i], vertices[j],0)
+#for i in range(0,32):
+ #   for j in range(0,32):
+  #      if i!=j:
+   #         if not isVisible(xx[i],yy[i],zz[i],xx[j],yy[j],zz[j],6378137):
+    #            add_edge(vertices[i], vertices[j],math.inf)
+     #       else:
+            #    add_edge(vertices[i], vertices[j], distance(xx[i], yy[i], zz[i], xx[j], yy[j], zz[j]))
+      #  else:
+          #  add_edge(vertices[i], vertices[j],0)
 
 print("")
 print("")
 
-print_graph()
-print("Internal representation: ", graph)
 
+# punti da considerare: #
+        # posizione satellite con x y z : xx[0],yy[0],zz[0]
+        # posizio
 
+print("")
+print("")
+# print("altitudine[km] ",irAlt[0]/1000, "orizzonte[km] ", p.horizon(irAlt[0])/1000)
 
+a = np.array([[3, 1], [1, 2]])
+b = np.array([9, 8])
+x = np.linalg.solve(a, b)
 
+print(x)
 
+print("Lat ", irLat[29], "Lon ", irLon[29], "Alt ", irAlt[29], "Conversione in xyz -> ", "x: ", xx[29], "y: ",
+      yy[29], "z: ", zz[29])
+print("Lat ", irLat[28], "Lon ", irLon[28], "Alt ", irAlt[28], "Conversione in xyz -> ", "x: ", xx[28], "y: ",
+      yy[28], "z: ", zz[28])
+print("Lat ", irLat[20], "Lon ", irLon[20], "Alt ", irAlt[20], "Conversione in xyz -> ", "x: ", xx[20], "y: ",
+      yy[20], "z: ", zz[20])
+
+flat = 43.769562
+flon = 11.255814
+flel = 800000
+
+plat = 48.856613
+plon = 2.352222
+plel = 800000
+
+print("")
+print("")
+fx, fy, fz = gps_to_ecef_pyproj(flat, flon, flel)
+print("Fx: ", fx, "Fy ", fy, "Fz ", fz, "GpsFx ", gps_to_ecef_pyproj(flat, flon, flel))
+px, py, pz = gps_to_ecef_pyproj(plat, plon, plel)
+print("Px: ", px, "Py ", py, "Pz ", pz, "GpsPx ", gps_to_ecef_pyproj(plat, plon, plel))
+print("")
+aa = gps_to_ecef_pyproj(1, 1, -6378137)
+print("zero ", aa)
+
+print("")
+print("")
+print("")
+print("")

@@ -99,9 +99,9 @@ def rectEq(x1,y1,z1,x2,y2,z2,r):    #1 = p ; 2 = q                      l = vect
 def isVisible(x1,y1,z1,x2,y2,z2,r):
     tmp = rectEq(x1,y1,z1,x2,y2,z2,r)
     if sym.im(tmp[0][0])!=0 or sym.im(tmp[0][1])!=0 or sym.im(tmp[0][2])!=0 or sym.im(tmp[1][0])!=0 or sym.im(tmp[1][1])!=0 or sym.im(tmp[1][2])!=0:
-        return False
-    else:
         return True
+    else:
+        return False
 
 result=rectEq(5091082.5313572,1013216.3395964877,4943045.661622145,4726826.686803615,194164.32677549776,5382534.598367236,6378137)
 print("result ",result)
@@ -120,6 +120,6 @@ print("Im test ", sym.im(pluto[0][0]))
 
 
 if sym.im(pluto[0][0]) ==0:
-    print("Diomios")
+    print("Nope")
 else:
     print("Funge")
