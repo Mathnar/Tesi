@@ -12,11 +12,11 @@ MathTest.py: Contiene l'algorimto (diviso in 3 fuznioni) che ho scritto per trov
  Se complessa, la retta non interseca la sfera. Ne segue che i due satelliti "si vedono".
  Nel programma totale (load) queste 3 funzioni sono ridotte ad un'unica funzione.
  
- Next.py: Script dove farò dei test con la costellazione IRIDIUM NEXT
+ Next.py: Script dove eseguo tutti gli stessi test ma utilizzando la costellazione IRIDIUM NEXT (75 satelliti)
  
  DtnS.py: Script contenente il test del simulatore pydtnsim 
  
- Dijkstra.py: Script contenente le funzioni per il calcolo del percorso ottimale di Dijkstra e creazione di grafo e 
+ Dijkstra.py: Script contenente alcune funzioni (che per ora non ho utilizzato) per il calcolo del percorso ottimale di Dijkstra e creazione di grafo e 
  matrice delle adiacenze
  
  Tutti gli altri file sono script provvisori su cui mi sono appuntato delle funzioni o dei test.
