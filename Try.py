@@ -1,3 +1,4 @@
+from collections import deque, namedtuple
 from skyfield.api import Topos, load
 import math
 import numpy as np
@@ -9,135 +10,109 @@ from obspy.geodetics import degrees2kilometers
 import pygeodesy as p
 from collections import deque, namedtuple
 
-
 stations_url = 'http://celestrak.com/NORAD/elements/iridium.txt'
 satellites = load.tle(stations_url, reload=True)
-ir7 = satellites['IRIDIUM 7 [-]']
-ir5 = satellites['IRIDIUM 5 [-]']
-ir4 = satellites['IRIDIUM 4 [-]']
-ir914 = satellites['IRIDIUM 914 [-]']
-ir16 = satellites['IRIDIUM 16 [-]']
-ir911 = satellites['IRIDIUM 911 [-]']
-ir920 = satellites['IRIDIUM 920 [-]']
-ir921 = satellites['IRIDIUM 921 [-]']
-ir26 = satellites['IRIDIUM 26 [-]']
-ir17 = satellites['IRIDIUM 17 [-]']
-ir22 = satellites['IRIDIUM 22 [-]']
-dm1 = satellites['DUMMY MASS 1 [-]']
-dm2 = satellites['DUMMY MASS 2 [-]']
-ir29 = satellites['IRIDIUM 29 [-]']
-ir33 = satellites['IRIDIUM 33 [-]']
-ir28 = satellites['IRIDIUM 28 [-]']
-ir36 = satellites['IRIDIUM 36 [-]']
-ir38 = satellites['IRIDIUM 38 [-]']
-ir39 = satellites['IRIDIUM 39 [-]']
-ir42 = satellites['IRIDIUM 42 [-]']
-ir44 = satellites['IRIDIUM 44 [-]']
-ir45 = satellites['IRIDIUM 45 [-]']
-ir24 = satellites['IRIDIUM 24 [-]']
-ir51 = satellites['IRIDIUM 51 [-]']
-ir57 = satellites['IRIDIUM 57 [-]']
-ir63 = satellites['IRIDIUM 63 [-]']
-ir69 = satellites['IRIDIUM 69 [-]']
-ir71 = satellites['IRIDIUM 71 [-]']
-ir73 = satellites['IRIDIUM 73 [-]']
-ir82 = satellites['IRIDIUM 82 [-]']
-ir2 = satellites['IRIDIUM 2 [-]']
-ir96 = satellites['IRIDIUM 96 [-]']
-
-iridium = [ir7, ir5, ir4, ir914, ir16, ir911, ir920, ir921, ir26, ir17, ir22, dm1, dm2, ir29, ir33, ir28, ir36,
-           ir38, ir39, ir42, ir44, ir45, ir24, ir51, ir57, ir63, ir69, ir71, ir73, ir82, ir2, ir96]
-
-obs = Topos('0 N', '0 W')
-print('Satelliti considerati')
-print(ir96)
-print(ir2)
-print()
-
 ts = load.timescale()
 t = ts.now()
+iridium = []
+c = 0
+k = False
 
-print("Prova con un satellite")
-print("")
-
-ir96pos = ir96.at(t)
-
-print()
-print('Posizioni satelliti considerati')
-print(ir96pos.position.km)
-print(ir96pos.position)
-
-print('/')
-
-
-sub96i = ir96pos.subpoint()
-print('latitudine ', sub96i.latitude)
-print('longitudine ', sub96i.longitude)
-print('altitudine ', sub96i.elevation.km)#risp alla crosta - se ci sommo raggio terrestre ho la distanza dal centro della terra
-
-x = str(sub96i.latitude).split(' ')
-print(x)
-
-tmp = str(x[0]).split('d')
-deg = tmp[0]
-print("deg", deg)
-
-pri = str(x[1])[:2]
-print("pri", pri)
-
-tmp1 = str(x[2]).split('"')
-sec = tmp1[0]
-print("sec", sec)
+for sat in satellites:
+    if k:
+        iridium.append(satellites[sat])
+        #print(sat)
+        #print("")
+        c=c+1
+    k = not k
 
 
-########################################################################################################################
-######################################################################################################################## FUNCTIONS
-def gps_to_ecef_pyproj(lat, lon, alt):
-    ecef = pyproj.Proj(proj='geocent', ellps='WGS84', datum='WGS84')
-    lla = pyproj.Proj(proj='latlong', ellps='WGS84', datum='WGS84')
-    x, y, z = pyproj.transform(lla, ecef, lon, lat, alt, radians=False)
-    return x,y,z
 
-def distance(x1, y1, z1, x2, y2, z2):
-    return math.sqrt(math.pow(x2 - x1, 2) + math.pow(y2 - y1, 2) + math.pow(z2 - z1, 2) * 1.0)
+inf = float('inf')
+Edge = namedtuple('Edge', 'start, end, cost')
 
 
-# Add a vertex to the set of vertices and the graph
-def add_vertex(v):
-  global graph
-  global vertices_no
-  global vertices
-  if v in vertices:
-    print("Vertex ", v, " already exists")
-  else:
-    vertices_no = vertices_no + 1
-    vertices.append(v)
-    if vertices_no > 1:
-        for vertex in graph:
-            vertex.append(0)
-    temp = []
-    for i in range(vertices_no):
-        temp.append(0)
-    graph.append(temp)
+def make_edge(start, end, cost=1):
+  return Edge(start, end, cost)
 
-# Add an edge between vertex v1 and v2 with edge weight e
-def add_edge(v1, v2, e):
-    global graph
-    global vertices_no
-    global vertices
-    # Check if vertex v1 is a valid vertex
-    if v1 not in vertices:
-        print("Vertex ", v1, " does not exist.")
-    # Check if vertex v1 is a valid vertex
-    elif v2 not in vertices:
-        print("Vertex ", v2, " does not exist.")
-    # Since this code is not restricted to a directed or
-    # an undirected graph, an edge between v1 v2 does not
-    # imply that an edge exists between v2 and v1
-    else:
-        index1 = vertices.index(v1)
-        index2 = vertices.index(v2)
-        graph[index1][index2] = e
+
+class Graph:
+    def __init__(self, edges):
+        # let's check that the data is right
+        wrong_edges = [i for i in edges if len(i) not in [2, 3]]
+        if wrong_edges:
+            raise ValueError('Wrong edges data: {}'.format(wrong_edges))
+
+        self.edges = [make_edge(*edge) for edge in edges]
+
+    @property
+    def vertices(self):
+        return set(
+            sum(
+                ([edge.start, edge.end] for edge in self.edges), []
+            )
+        )
+
+    def get_node_pairs(self, n1, n2, both_ends=True):
+        if both_ends:
+            node_pairs = [[n1, n2], [n2, n1]]
+        else:
+            node_pairs = [[n1, n2]]
+        return node_pairs
+
+    def remove_edge(self, n1, n2, both_ends=True):
+        node_pairs = self.get_node_pairs(n1, n2, both_ends)
+        edges = self.edges[:]
+        for edge in edges:
+            if [edge.start, edge.end] in node_pairs:
+                self.edges.remove(edge)
+
+    def add_edge(self, n1, n2, cost=1, both_ends=True):
+        node_pairs = self.get_node_pairs(n1, n2, both_ends)
+        for edge in self.edges:
+            if [edge.start, edge.end] in node_pairs:
+                return ValueError('Edge {} {} already exists'.format(n1, n2))
+
+        self.edges.append(Edge(start=n1, end=n2, cost=cost))
+        if both_ends:
+            self.edges.append(Edge(start=n2, end=n1, cost=cost))
+
+    @property
+    def neighbours(self):
+        neighbours = {vertex: set() for vertex in self.vertices}
+        for edge in self.edges:
+            neighbours[edge.start].add((edge.end, edge.cost))
+        return neighbours
+
+    def dijkstra(self, source, dest):
+        assert source in self.vertices, 'Such source node doesn\'t exist'
+        distances = {vertex: inf for vertex in self.vertices}
+        previous_vertices = {
+            vertex: None for vertex in self.vertices
+        }
+        distances[source] = 0
+        vertices = self.vertices.copy()
+
+        while vertices:
+            current_vertex = min(
+                vertices, key=lambda vertex: distances[vertex])
+            vertices.remove(current_vertex)
+            if distances[current_vertex] == inf:
+                break
+            for neighbour, cost in self.neighbours[current_vertex]:
+                alternative_route = distances[current_vertex] + cost
+                if alternative_route < distances[neighbour]:
+                    distances[neighbour] = alternative_route
+                    previous_vertices[neighbour] = current_vertex
+
+        path, current_vertex = deque(), dest
+        while previous_vertices[current_vertex] is not None:
+            path.appendleft(current_vertex)
+            current_vertex = previous_vertices[current_vertex]
+        if path:
+            path.appendleft(current_vertex)
+        return path
+
 
 # Print the graph
 def print_graph():
@@ -184,16 +159,26 @@ def isVisible(x1,y1,z1,x2,y2,z2):    #1 = p ; 2 = q                      l = vec
         return False
 
 
-#def isVisible(x1,y1,z1,x2,y2,z2,r):
-   # tmp = rectEq(x1,y1,z1,x2,y2,z2,r)
-    #if sym.im(tmp[0][0])!=0 or sym.im(tmp[0][1])!=0 or sym.im(tmp[0][2])!=0 or sym.im(tmp[1][0])!=0 or sym.im(tmp[1][1])!=0 or sym.im(tmp[1][2])!=0:
-    #    return False
-    #else:
-    #    return True
+def gps_to_ecef_pyproj(lat, lon, alt):
+    ecef = pyproj.Proj(proj='geocent', ellps='WGS84', datum='WGS84')
+    lla = pyproj.Proj(proj='latlong', ellps='WGS84', datum='WGS84')
+    x, y, z = pyproj.transform(lla, ecef, lon, lat, alt, radians=False)
+    return x,y,z
+
+def distance(x1, y1, z1, x2, y2, z2):
+    return math.sqrt(math.pow(x2 - x1, 2) + math.pow(y2 - y1, 2) + math.pow(z2 - z1, 2) * 1.0)
 
 
-######################################################################################################################## FUNCTIONS
-########################################################################################################################
+
+graph = Graph([
+    ("a", "b", 7),  ("a", "c", 90),  ("a", "f", 14), ("b", "c", 10),
+    ("b", "d", 15), ("c", "d", 11), ("c", "f", 2),  ("d", "e", 6),
+    ("e", "f", 9)])
+
+#start, end, cost
+print(graph.dijkstra("a", "e"))
+
+
 
 print("")
 print("")
@@ -309,38 +294,38 @@ print("")
 
 vertices = [] #riempio con add_vertex
 vertices_no = 0 #aumento con add_vertex
-graph = [] #riempio con add_vertex
+graph = Graph #riempio con add_vertex
 cost = 0
 
-for i in range(0,32):
-    add_vertex(iridium[i])
 
-#for i in range(0,32):
- #   print(vertices[i])
-
-for i in range(0,32):
+for i in range(0,1):
     for j in range(0,32):
        # print("Ciclo ",i,j)
         if i!=j:
             if (p.haversine_(irLat[i]*0.0174533,irLat[j]*0.0174533,(irLon[i]-irLon[j])*0.0174533)) < 0.785398:         #0.785398
                # print("Angolo minore di 45° ",(p.haversine_(irLat[i]*0.0174533,irLat[j]*0.0174533,(irLon[i]-irLon[j])*0.0174533)))
                 if not isVisible(xx[i],yy[i],zz[i],xx[j],yy[j],zz[j]):
+                    graph.add_edge(vertices[i], vertices[j], math.inf)
                  #   print("Inf ")
-                    add_edge(vertices[i], vertices[j],math.inf)
+
                 else:
+                    graph.add_edge(vertices[i], vertices[j], round(distance(xx[i], yy[i], zz[i], xx[j], yy[j], zz[j]),3))
                  #   print("Distance ")
-                    add_edge(vertices[i], vertices[j], round(distance(xx[i], yy[i], zz[i], xx[j], yy[j], zz[j]),3))
             else:
+                graph.add_edge(vertices[i],vertices[j],math.inf)
                # print("Inf ")
-                add_edge(vertices[i], vertices[j], math.inf)
         else:
+            graph.add_edge(vertices[i],vertices[j],0)
           #  print("i=j ")
-            add_edge(vertices[i], vertices[j],0)
 
 print("")
 print("")
 
 print_graph()
 print("Internal representation: ", graph)
+print("")
+print("")
+graph.dijkstra(vertices[0], vertices[2])
+graph.dijkstra("a","e")
 
 
