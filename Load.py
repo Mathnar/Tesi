@@ -8,42 +8,47 @@ from obspy.geodetics import degrees2kilometers
 #from pygeodesy import compassAngle
 import pygeodesy as p
 from collections import deque, namedtuple
+import sys as sys
+
+
+import scipy as sc
+from scipy.sparse.csgraph import dijkstra
 
 
 stations_url = 'http://celestrak.com/NORAD/elements/iridium.txt'
 satellites = load.tle(stations_url, reload=True)
-ir7 = satellites['IRIDIUM 7 [-]']
-ir5 = satellites['IRIDIUM 5 [-]']
-ir4 = satellites['IRIDIUM 4 [-]']
-ir914 = satellites['IRIDIUM 914 [-]']
-ir16 = satellites['IRIDIUM 16 [-]']
-ir911 = satellites['IRIDIUM 911 [-]']
-ir920 = satellites['IRIDIUM 920 [-]']
-ir921 = satellites['IRIDIUM 921 [-]']
-ir26 = satellites['IRIDIUM 26 [-]']
-ir17 = satellites['IRIDIUM 17 [-]']
-ir22 = satellites['IRIDIUM 22 [-]']
-dm1 = satellites['DUMMY MASS 1 [-]']
-dm2 = satellites['DUMMY MASS 2 [-]']
-ir29 = satellites['IRIDIUM 29 [-]']
-ir33 = satellites['IRIDIUM 33 [-]']
-ir28 = satellites['IRIDIUM 28 [-]']
-ir36 = satellites['IRIDIUM 36 [-]']
-ir38 = satellites['IRIDIUM 38 [-]']
-ir39 = satellites['IRIDIUM 39 [-]']
-ir42 = satellites['IRIDIUM 42 [-]']
-ir44 = satellites['IRIDIUM 44 [-]']
-ir45 = satellites['IRIDIUM 45 [-]']
-ir24 = satellites['IRIDIUM 24 [-]']
-ir51 = satellites['IRIDIUM 51 [-]']
-ir57 = satellites['IRIDIUM 57 [-]']
-ir63 = satellites['IRIDIUM 63 [-]']
-ir69 = satellites['IRIDIUM 69 [-]']
-ir71 = satellites['IRIDIUM 71 [-]']
-ir73 = satellites['IRIDIUM 73 [-]']
-ir82 = satellites['IRIDIUM 82 [-]']
-ir2 = satellites['IRIDIUM 2 [-]']
-ir96 = satellites['IRIDIUM 96 [-]']
+ir7 = satellites['IRIDIUM 7 [-]']   #0
+ir5 = satellites['IRIDIUM 5 [-]']   #1
+ir4 = satellites['IRIDIUM 4 [-]']   #2
+ir914 = satellites['IRIDIUM 914 [-]']   #3
+ir16 = satellites['IRIDIUM 16 [-]']   #4
+ir911 = satellites['IRIDIUM 911 [-]']   #5
+ir920 = satellites['IRIDIUM 920 [-]']   #6
+ir921 = satellites['IRIDIUM 921 [-]']   #7
+ir26 = satellites['IRIDIUM 26 [-]']   #8
+ir17 = satellites['IRIDIUM 17 [-]']   #9
+ir22 = satellites['IRIDIUM 22 [-]']   #10
+dm1 = satellites['DUMMY MASS 1 [-]']   #11
+dm2 = satellites['DUMMY MASS 2 [-]']   #12
+ir29 = satellites['IRIDIUM 29 [-]']   #13
+ir33 = satellites['IRIDIUM 33 [-]']   #14
+ir28 = satellites['IRIDIUM 28 [-]']   #15
+ir36 = satellites['IRIDIUM 36 [-]']   #16
+ir38 = satellites['IRIDIUM 38 [-]']   #17
+ir39 = satellites['IRIDIUM 39 [-]']   #18
+ir42 = satellites['IRIDIUM 42 [-]']   #19
+ir44 = satellites['IRIDIUM 44 [-]']   #20
+ir45 = satellites['IRIDIUM 45 [-]']   #21
+ir24 = satellites['IRIDIUM 24 [-]']   #22
+ir51 = satellites['IRIDIUM 51 [-]']   #23
+ir57 = satellites['IRIDIUM 57 [-]']   #24
+ir63 = satellites['IRIDIUM 63 [-]']   #25
+ir69 = satellites['IRIDIUM 69 [-]']   #26
+ir71 = satellites['IRIDIUM 71 [-]']   #27
+ir73 = satellites['IRIDIUM 73 [-]']   #28
+ir82 = satellites['IRIDIUM 82 [-]']   #29
+ir2 = satellites['IRIDIUM 2 [-]']   #30
+ir96 = satellites['IRIDIUM 96 [-]']   #31
 
 iridium = [ir7, ir5, ir4, ir914, ir16, ir911, ir920, ir921, ir26, ir17, ir22, dm1, dm2, ir29, ir33, ir28, ir36,
            ir38, ir39, ir42, ir44, ir45, ir24, ir51, ir57, ir63, ir69, ir71, ir73, ir82, ir2, ir96]
@@ -54,8 +59,10 @@ print(ir96)
 print(ir2)
 print()
 
-ts = load.timescale()
-t = ts.now()
+ts = load.timescale(builtin=True)
+t = ts.utc(2020, 4, 25, 00, 00, 00)   #utc(2020, 4, 16, 00, 00, 00)
+print("Tempo ", ts.now())
+
 
 print("Prova con un satellite")
 print("")
@@ -149,6 +156,12 @@ def print_graph():
         print(vertices[i], " -> ", vertices[j], " edge weight: ", graph[i][j])
 
 
+def writeTxt(grafo):
+    for i in range(0,32):
+        for j in range(0, 32):
+            np.savetxt("prova.txt", grafo)
+
+
 #def vectp(x1,y1,z1,x2,y2,z2):
   #  vect = []
    # l = x2-x1
@@ -208,6 +221,8 @@ irLon = []
 irAlt = []
 
 for i in range(0,32):
+    print("Appendo ir al tempo ", t)
+    print("Ir ", iridium[i].at(t))
     iridPos.append(iridium[i].at(t))
 
 #for i in range(0,32):
@@ -315,11 +330,14 @@ cost = 0
 for i in range(0,32):
     add_vertex(iridium[i])
 
-#for i in range(0,32):
- #   print(vertices[i])
+print("")
 
 for i in range(0,32):
-    for j in range(0,32):
+    print(vertices[i])
+    print(t.utc_jpl())
+
+for i in range(0,2):
+    for j in range(0,2):
        # print("Ciclo ",i,j)
         if i!=j:
             if (p.haversine_(irLat[i]*0.0174533,irLat[j]*0.0174533,(irLon[i]-irLon[j])*0.0174533)) < 0.785398:         #0.785398
@@ -342,5 +360,16 @@ print("")
 
 print_graph()
 print("Internal representation: ", graph)
+
+
+
+
+
+
+print(flo)
+#writeTxt(graph)
+
+
+
 
 
