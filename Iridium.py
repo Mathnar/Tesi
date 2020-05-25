@@ -91,7 +91,7 @@ def isVisible(x1,y1,z1,x2,y2,z2):    #1 = p ; 2 = q                      l = vec
     e = sym.Eq(y, tmp.get(y))
     c = sym.Eq(x**2+y**2+z**2,r**2)
     tmp = sym.solve([d,e,c],(x,y,z))
-    if sym.im(tmp[0][0]):
+    if sym.im(tmp[0][0]):           #se ho intersezione -> no parte IM (non si vedono) ritorna false
         return True
     else:
         return False
@@ -102,7 +102,7 @@ stations_url = 'http://celestrak.com/NORAD/elements/iridium.txt'
 satellites = load.tle(stations_url, reload=True)
 f = open("prova.txt", 'w')
 ts = load.timescale()
-t = ts.now()
+#t = ts.now()
 iridium = []
 c = 0
 k = False

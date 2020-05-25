@@ -14,34 +14,11 @@ def gps_to_ecef_pyproj(lat, lon, alt):
 def distance(x1, y1, z1, x2, y2, z2):
     return math.sqrt(math.pow(x2 - x1, 2) + math.pow(y2 - y1, 2) + math.pow(z2 - z1, 2) * 1.0)
 
+#def writeTxt(grafo):
+#    np.savetxt(f, grafo)
 
-def writeTxt(grafo):
-    np.savetxt(f, grafo)
 
 
-print("")
-def isVisible(x1,y1,z1,x2,y2,z2):    #1 = p ; 2 = q                      l = vect[0] ; m = vect[1] ; n = vect[2]
-    r = 6378137
-    sym.init_printing()
-    vect = []
-    l = x2 - x1
-    m = y2 - y1
-    n = z2 - z1
-    vect.append(l)
-    vect.append(m)
-    vect.append(n)
-    x,y,z = sym.symbols('x,y,z')
-    a = sym.Eq((x-x1)/vect[0],(y-y1)/vect[1])
-    b = sym.Eq((y-y1)/vect[1],(z-z1)/vect[2])
-    tmp = sym.solve([a, b], (x, y, z))
-    d = sym.Eq(x, tmp.get(x))
-    e = sym.Eq(y, tmp.get(y))
-    c = sym.Eq(x**2+y**2+z**2,r**2)
-    tmp = sym.solve([d,e,c],(x,y,z))
-    if sym.im(tmp[0][0]):
-        return True
-    else:
-        return False
 
 def closestSatTo_P(px,py,pz,when):
     stations_url = 'http://celestrak.com/NORAD/elements/iridium.txt'

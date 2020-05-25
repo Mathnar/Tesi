@@ -44,9 +44,6 @@ def isVisible(x1,y1,z1,x2,y2,z2):    #1 = p ; 2 = q                      l = vec
     else:
         return False
 
-def cgr_forw():
-    exn = []
-    #if update
 
 def load_CP(update, indice):
     mtxt = []
@@ -115,7 +112,7 @@ def getRl(c_graph,source_ind,dest_ind,ecluded_nodes):
    # print("nb type ", type(nb))
     for i in range(0,size-1 ):
         if nb[i] in ecluded_nodes:
-            tmp = nb[i]
+            #tmp = nb[i]
       #      print("nb[i] ", nb[i],"i ",i)
       #      print("excluded nodes ", excluded_nodes)
             nb = np.delete(nb,i)
